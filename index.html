@@ -1,0 +1,1224 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>Héritage Doctrine - Rémi Janot - SymfonyLive Paris 2026</title>
+
+		<meta name="description" content="Vous avez déjà eu envie de faire hériter des tables comme des classes lorsque vous modélisez votre base de données ? Vous devriez lier une entité à plusieurs autres de type similaire ? Doctrine prend en charge l'héritage pour gérer cela proprement. Par exemple, vous pouvez définir une entité de base User et l'étendre avec des classes Admin et Customer (chacune avec sa propre table ou une table partagée). On verra ensemble les stratégies disponibles, quand les utiliser, ainsi que les pièges courants. Aucune connaissance préalable de l'héritage Doctrine n'est requise !">
+		<meta name="author" content="Rémi Janot">
+
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<link rel="stylesheet" href="dist/reset.css">
+		<link rel="stylesheet" href="dist/reveal.css">
+		<link rel="stylesheet" href="dist/theme/black.css" id="theme">
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+		<link rel="stylesheet" href="theme.css">
+
+		<link rel="stylesheet" href="plugin/highlight/atom-one-dark.css">
+	</head>
+
+	<body>
+
+		<div class="reveal">
+
+			<div class="slides">
+
+				<section>
+					<h3>Doctrine inheritance</h3>
+					<p>
+						<small>L'héritage en base de données</small>
+					</p>
+					<p>
+						<img src="./images/sflive2026_horizontal_simple_transparent-positif.png"/>
+					</p>
+					<small>
+						Rémi JANOT
+						<br>
+						<a href="https://www.linkedin.com/in/rjanot/" target="_blank">
+							<img src="./images/linkedin.png" height="26" style="margin: 0 !important;"/>
+						</a> |
+						<a href="mailto:%72%2e%6a%61%6e%6f%74%40%67%6d%61%69%6c%2e%63%6f%6d" target="_blank">
+							r<b style="display: none">.remove.this</b>.janot@gmail.com</span>
+						</a>
+					</small>
+					<aside class="notes">
+						<p>Bonjour tout le monde!</p>
+						<p>Bienvenue ! Pour les 30 prochaines minutes, nous allons parler de l'héritage Doctrine</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3 style="margin-bottom: 0">1.</h3>
+					<h4 style="margin-bottom: 80px">Quel est le problème à résoudre ?</h4>
+					<h3 style="margin-bottom: 0">2.</h3>
+					<h4 style="margin-bottom: 80px">Fonctionnement</h4>
+					<h3 style="margin-bottom: 0">3.</h3>
+					<h4 style="margin-bottom: 80px">Retour d'expérience</h4>
+				</section>
+
+				<section>
+					<h3>Qui suis-je ?</h3>
+					<table>
+						<tr>
+							<td width="33%">
+								<div class="fragment" style="text-align: center">
+									<p>10100<p></p>
+									<img src="./images/where-i-live.png" height="260" />
+								</div>
+							</td>
+							<td width="33%">
+								<div class="fragment" style="text-align: center">
+									<p>AFOL</p>
+									<img src="./images/afol.jpg" height="260" />
+								</div>
+							</td>
+							<td width="33%">
+								<div class="fragment" style="text-align: center">
+									<p>Comédien</p>
+									<img src="./images/comedian.png" height="260"/>
+								</div>
+							</td>
+						</tr>
+					</table>
+					<aside class="notes">
+						<p>Mais avant ça, qui suis-je ?</p>
+						<ul>
+							<li><p>Je viens de l'Aube, mon code postal est binaire : 10100</p></li>
+							<li>Fan de Legos, j'attends avec impatience un Sympony en brique, voilà, le message est passé :)</li>
+							<li>Dans mon temps libre, un peu comme aujourd'hui, il m'arrive d'arrêter de parler aux ordinateurs et de monter sur scène pour parler à des humains :)</li>
+						</ul>
+					</aside>
+				</section>
+
+				<section>
+					<h3>Actuellement</h3>
+					<div>
+						<p>Co-founder & CTO @ Vasco.fund</p>
+						<img src="./images/illustration_vasco.png" height="300" />
+					</div>
+				</section>
+
+				<section>
+					<h3>Héritage ≠ Polymorphisme</h3>
+					<table class="comparison">
+						<thead>
+							<tr>
+								<th></th>
+								<th>Héritage Doctrine</th>
+								<th>Polymorphisme Eloquent</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td><strong>Pattern</strong></td>
+								<td>Table Inheritance</td>
+								<td>Polymorphic Associations</td>
+							</tr>
+							<tr>
+								<td><strong>But</strong></td>
+								<td>Mapper une hiérarchie de classes</td>
+								<td>Une "FK" qui pointe vers N classes</td>
+							</tr>
+						</tbody>
+					</table>
+					<aside class="notes">
+						<p>Avant de commencer, une clarification importante pour ceux qui viennent de Laravel ou Rails.</p>
+						<p>L'héritage Doctrine et le "polymorphisme" Eloquent (morphTo, morphMany, morphToMany) sont deux patterns complètement différents.</p>
+						<p>L'héritage Doctrine implémente le pattern "Table Inheritance" de Martin Fowler : on mappe une hiérarchie de classes PHP vers des tables SQL. La colonne discriminante sert à savoir quelle classe PHP instancier.</p>
+						<p>Le polymorphisme Eloquent, c'est une relation où une colonne *_type stocke le nom du modèle cible, permettant à une table (ex: comments) de pointer vers plusieurs tables différentes (ex: posts, videos). C'est du polymorphisme de relation, pas d'héritage.</p>
+						<p>Les deux utilisent une colonne discriminante, d'où la confusion fréquente. Mais Doctrine = héritage OOP (is-a, extends), Eloquent = association (has-a).</p>
+						<p>Aujourd'hui on parle bien d'héritage, pas de relations polymorphiques.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h1 style="margin-bottom: 0">1.</h1>
+					<h3 style="margin-bottom: 80px">Quel est le problème à résoudre ?</h3>
+				</section>
+
+				<section data-auto-animate>
+					<h3>Le besoin</h3>
+					<div style="display: flex; justify-content: space-around; align-items: flex-start;">
+						<div class="fragment" data-fragment-index="0" style="flex: 1; text-align: center;">
+							<h4>Admin</h4>
+							<ul style="font-size: 0.7em; list-style: none;">
+								<li class="fragment highlight-blue" data-fragment-index="2">email</li>
+								<li class="fragment highlight-blue" data-fragment-index="2">password</li>
+								<li>role</li>
+								<li>permissions</li>
+							</ul>
+						</div>
+						<div class="fragment" data-fragment-index="1" style="flex: 1; text-align: center;">
+							<h4>Customer</h4>
+							<ul style="font-size: 0.7em; list-style: none;">
+								<li class="fragment highlight-blue" data-fragment-index="2">email</li>
+								<li class="fragment highlight-blue" data-fragment-index="2">password</li>
+								<li>address</li>
+								<li>loyaltyPoints</li>
+							</ul>
+						</div>
+					</div>
+					<aside class="notes">
+						<p>Posons un problème. On a des utilisateurs dans notre application.</p>
+						<p>Certains sont des Admin, d'autres des Customer. Ils partagent des propriétés communes (email, password), mais chacun a aussi ses propriétés spécifiques.</p>
+						<p>En PHP, on va tendre naturellement vers de l'héritage.</p>
+					</aside>
+				</section>
+
+				<section data-auto-animate>
+					<h3>Le besoin</h3>
+					<div style="display: flex; justify-content: space-around; align-items: flex-start;">
+						<div style="flex: 1; text-align: center;">
+							<h4>User</h4>
+							<ul style="font-size: 0.7em; list-style: none;">
+								<li><strong>email</strong></li>
+								<li><strong>password</strong></li>
+							</ul>
+						</div>
+						<div style="flex: 1; text-align: center;">
+							<h4>Admin</h4>
+							<ul style="font-size: 0.7em; list-style: none;">
+								<li><strike>email</strike></li>
+								<li><strike>password</strike></li>
+								<li><strong>role</strong></li>
+								<li><strong>permissions</strong></li>
+							</ul>
+						</div>
+						<div style="flex: 1; text-align: center;">
+							<h4>Customer</h4>
+							<ul style="font-size: 0.7em; list-style: none;">
+								<li><strike>email</strike></li>
+								<li><strike>password</strike></li>
+								<li><strong>address</strong></li>
+								<li><strong>loyaltyPoints</strong></li>
+							</ul>
+						</div>
+					</div>
+					<p class="fragment" style="margin-top: 40px; font-size: 0.8em;">
+						Comment modéliser ça en base de données ?
+					</p>
+					<aside class="notes">
+						<p>Nous avons donc une nouvelle classe User qui reprend les propriétés communes (email, password), mais chacun a aussi ses propriétés spécifiques.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>Mapped Superclass</h3>
+					<div style="display: flex; justify-content: space-around; align-items: flex-start;">
+						<div class="fragment" style="flex: 1; text-align: center;">
+							<pre><code class="language-php" data-trim data-noescape data-line-numbers="|1">
+#[MappedSuperclass]
+abstract class User
+{
+    #[Id]
+    #[GeneratedValue]
+    #[Column]
+    private ?int $id = null;
+
+    #[Column(length: 255)]
+    private string $email;
+
+    #[Column(length: 255)]
+    private string $password;
+}
+							</code></pre>
+						</div>
+						<div style="width:5rem"></div>
+						<div class="fragment" style="flex: 1; text-align: center;">
+							<pre style="margin-bottom: 3rem"><code class="language-php" data-trim data-noescape>
+#[Entity]
+class Admin extends User
+{
+    #[Column(length: 50)]
+    private string $role;
+}
+							</code></pre>
+							<pre><code class="language-php" data-trim data-noescape>
+#[Entity]
+class Customer extends User
+{
+    #[Column(type: 'text')]
+    private string $address;
+}
+							</code></pre>
+						</div>
+					</div>
+					<aside class="notes">
+						<p>Doctrine nous offre une première solution : le MappedSuperclass.</p>
+						<p>On crée une classe abstraite User annotée MappedSuperclass, et nos entités Admin et Customer en héritent (ici j'ai gardé juste une propriété pour l'affichage).</p>
+						<p>C'est du partage de code, du partage de mapping. C'est simple et ça marche.</p>
+					</aside>
+				</section>
+
+				<section class="shrink-on-fragment">
+					<h3>Mapped Superclass - SQL</h3>
+					<pre><code class="language-sql" data-trim>
+-- Pas de table "user" !
+CREATE TABLE admin (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR NOT NULL,
+    password VARCHAR NOT NULL,
+    role VARCHAR NOT NULL
+    permissions JSON NOT NULL
+);
+CREATE TABLE customer (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR NOT NULL,
+    password VARCHAR NOT NULL,
+    address TEXT NOT NULL
+    loyalty_points INT NOT NULL
+);
+					</code></pre>
+					<div class="fragment" style="font-size: 0.7em;">
+						<p>
+							Avantages : partage de code, simple, pas de NULL
+						</p>
+						<p style="color: var(--accent-red);"><strong>Limites : pas de requête "tous les users"<br>pas de relation vers User, User n'est pas une entité,</strong></p>
+					</div>
+					<aside class="notes">
+						<p>Côté SQL, on obtient 2 tables séparées. Pas de table user.</p>
+						<p>C'est propre, mais le gros problème : on ne peut pas faire de requête findAll() sur User. Et on ne peut pas avoir de relation ManyToOne vers User non plus, car ce n'est pas une entité.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>On veut plus !</h3>
+					<ul style="font-size: 0.8em;">
+						<li class="fragment">Requêter <strong style="color: var(--accent-blue);">tous</strong> les Users d'un coup</li>
+						<li class="fragment">Avoir des <strong style="color: var(--accent-blue);">relations</strong> vers l'entité parente</li>
+						<li class="fragment">Garder l'<strong style="color: var(--accent-blue);">héritage</strong> en PHP</li>
+					</ul>
+					<p class="fragment" style="margin-top: 60px; font-size: 1.2em;">
+						Il nous faut un <strong style="color: var(--accent-blue);">vrai héritage en BDD</strong>
+					</p>
+					<aside class="notes">
+						<p>On veut pouvoir faire un findAll sur User et récupérer des Admin ET des Customer. On veut pouvoir créer des relations vers User.</p>
+						<p>Pour ça, Doctrine propose deux stratégies d'héritage réel : Single Table et Class Table. Voyons comment ça fonctionne.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h1 style="margin-bottom: 0">2.</h1>
+					<h3 style="margin-bottom: 80px">Fonctionnement</h3>
+				</section>
+
+				<section>
+					<h3>Le Discriminant</h3>
+					<p style="font-size: 0.75em;">La colonne qui dit à Doctrine <strong>quelle classe PHP instancier</strong></p>
+					<pre><code class="language-php" data-trim data-noescape>
+#[DiscriminatorColumn(name: 'type', type: 'string')]
+#[DiscriminatorMap([
+    'admin'    => Admin::class,
+    'customer' => Customer::class,
+])]
+					</code></pre>
+					<table style="font-size: 0.6em; margin-top: 30px;">
+						<tr>
+							<th>id</th><th>email</th><th><strong>type</strong></th><th>...</th>
+						</tr>
+						<tr>
+							<td>1</td><td>alice@example.com</td><td><strong>admin</strong></td><td>...</td>
+						</tr>
+						<tr>
+							<td>2</td><td>bob@example.com</td><td><strong>customer</strong></td><td>...</td>
+						</tr>
+					</table>
+					<aside class="notes">
+						<p>Avant de voir les stratégies, il faut comprendre le discriminant. C'est LE concept central.</p>
+						<p>Le DiscriminatorColumn définit la colonne en BDD qui va stocker le type. Le DiscriminatorMap fait le lien entre une valeur dans cette colonne et une classe PHP.</p>
+						<p>Quand Doctrine lit une ligne avec type='admin', il sait qu'il doit instancier un objet Admin. Idem avec Customer</p>
+					</aside>
+				</section>
+
+				<section>
+					<h2>Single Table Inheritance</h2>
+					<h4>(STI)</h4>
+					<aside class="notes">
+						<p>Première stratégie : le Single Table Inheritance. Toutes les entités dans une seule table.</p>
+					</aside>
+				</section>
+
+				<section data-auto-animate>
+					<h3>STI - Code PHP</h3>
+					<div style="display: flex; justify-content: space-around; align-items: flex-start;">
+						<div class="fragment" style="flex: 1; text-align: center;">
+							<pre><code class="language-php" data-trim data-noescape data-line-numbers="|2-20">
+#[MappedSuperclass]
+abstract class User
+{
+    #[Id]
+    #[GeneratedValue]
+    #[Column]
+    private ?int $id = null;
+
+    #[Column(length: 255)]
+    private string $email;
+
+    #[Column(length: 255)]
+    private string $password;
+}
+							</code></pre>
+						</div>
+						<div style="width:5rem"></div>
+						<div class="fade-in-then-semi-out" style="flex: 1; text-align: center;">
+							<pre style="margin-bottom: 3rem"><code class="language-php" data-trim data-noescape>
+#[Entity]
+class Admin extends User
+{
+    #[Column(length: 50)]
+    private string $role;
+}
+							</code></pre>
+							<pre><code class="language-php" data-trim data-noescape>
+#[Entity]
+class Customer extends User
+{
+    #[Column(type: 'text')]
+    private string $address;
+}
+							</code></pre>
+						</div>
+					</div>
+					<aside class="notes">
+						<p>Rien ne change pour les enfants, Admin et Customer étendent User comme avant.</p>
+						<p>On reprend notre classe User, mais cette fois ce ne sera pas une MappedSuperclass</p>
+					</aside>
+				</section>
+				<section data-auto-animate>
+					<h3>STI - Code PHP</h3>
+					<div style="display: flex; justify-content: space-around; align-items: flex-start;">
+						<div style="flex: 1; text-align: center;">
+							<pre><code class="language-php" data-trim data-noescape data-line-numbers="|1|2|3-6|7|">
+#[Entity]
+#[DiscriminatorColumn(name: 'type', type: 'string')]
+#[DiscriminatorMap([
+    'admin'    => Admin::class,
+    'customer' => Customer::class,
+])]
+#[InheritanceType('SINGLE_TABLE')]
+abstract class User
+{
+    #[Id]
+    #[GeneratedValue]
+    #[Column]
+    private ?int $id = null;
+
+    #[Column(length: 255)]
+    private string $email;
+
+    #[Column(length: 255)]
+    private string $password;
+}
+							</code></pre>
+						</div>
+					</div>
+					<aside class="notes">
+						<p>C'est une vraie Entity. On ajoute le DiscriminatorColumn et le DiscriminatorMap comme vu précédemment, et enfin on introduit InheritanceType SINGLE_TABLE.</p>
+						<p>Voilà à quoi ressemble notre classe User désormais</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>STI - SQL généré</h3>
+					<pre><code class="language-sql" data-trim data-line-numbers="|2,4,5|3|6-7|8-9">
+CREATE TABLE user (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    type VARCHAR(255) NOT NULL,    -- discriminant
+    email VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(50),              -- admin, NULL si customer
+    permissions JSON,              -- admin, NULL si customer
+    address TEXT,                  -- customer, NULL si admin
+    loyalty_points INT             -- customer, NULL si admin
+);
+					</code></pre>
+					<table class="fragment" style="font-size: 0.5em; margin-top: 20px;">
+						<tr>
+							<th>id</th><th>type</th><th>email</th><th>password</th>
+							<th>role</th><th>permissions</th><th>address</th><th>loyalty_points</th>
+						</tr>
+						<tr>
+							<td>1</td><td>admin</td><td>alice@acme.com</td><td>$2y$...</td>
+							<td>SUPER_ADMIN</td><td>["MANAGE_USERS"]</td>
+							<td class="null-cell">NULL</td><td class="null-cell">NULL</td>
+						</tr>
+						<tr>
+							<td>2</td><td>customer</td><td>bob@mail.com</td><td>$2y$...</td>
+							<td class="null-cell">NULL</td><td class="null-cell">NULL</td>
+							<td>12 rue de Paris</td><td>150</td>
+						</tr>
+					</table>
+					<aside class="notes">
+						<p>Côté SQL, tout atterrit dans une seule table. On retrouve les colonnes de notre user, la colonne discriminant 'type', et enfin toutes les colonnes de tous les types.</p>
+						<p>Vous voyez le problème : les colonnes spécifiques à un type sont NULL pour les autres. Un Admin n'a pas d'adresse, un Customer n'a pas de rôle. Plus on a de types, plus on a de NULL.</p>
+						<p>Et attention : on ne peut pas mettre de contrainte NOT NULL sur les colonnes des enfants, car elles DOIVENT accepter NULL pour les autres types.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>STI - Requêtes</h3>
+					<pre><code class="language-php" data-trim>
+// Tous les utilisateurs (Admin + Customer mélangés)
+$users = $em->getRepository(User::class)->findAll();
+					</code></pre>
+					<pre class="fragment"><code class="language-sql" data-trim>
+SELECT * FROM user;
+-- Doctrine instancie Admin ou Customer selon la colonne "type"
+					</code></pre>
+					<pre class="fragment"><code class="language-php" data-trim>
+// Seulement les Admin
+$admins = $em->getRepository(Admin::class)->findAll();
+					</code></pre>
+					<pre class="fragment"><code class="language-sql" data-trim>
+SELECT * FROM user WHERE type = 'admin';
+					</code></pre>
+					<pre class="fragment"><code class="language-php" data-trim>
+// Fonctionne aussi en DQL
+$query = $em->createQuery(
+    'SELECT u FROM App\Entity\User u WHERE u.email LIKE :domain'
+);
+// Retourne des Admin ET des Customer
+					</code></pre>
+					<aside class="notes">
+						<p>Et voilà la magie ! On peut maintenant faire findAll sur User et récupérer des Admin ET des Customer. Doctrine utilise la colonne type pour instancier la bonne classe PHP.</p>
+						<p>Si on requête directement le repository Admin, Doctrine ajoute automatiquement un WHERE type = 'admin'. C'est transparent.</p>
+						<p>Le DQL fonctionne aussi : on peut requêter sur User et obtenir un mélange d'entités.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>STI - Bilan</h3>
+					<div style="display: flex; justify-content: space-around;">
+						<div style="flex: 1; padding: 10px;">
+							<h4 style="color: var(--accent-green);">Avantages</h4>
+							<ul style="font-size: 0.65em;">
+								<li>Relations vers User possibles</li>
+								<li>Simple à mettre en place</li>
+								<li>Performances (pas de JOIN)</li>
+							</ul>
+						</div>
+						<div style="flex: 1; padding: 10px;">
+							<h4 style="color: var(--accent-red);">Inconvénients</h4>
+							<ul style="font-size: 0.65em;">
+								<li>Table qui grossit avec les sous-types</li>
+								<li>Colonnes avec NULL</li>
+								<li>Pas de NOT NULL sur colonnes enfant</li>
+								<li>Schéma moins lisible</li>
+							</ul>
+						</div>
+					</div>
+					<aside class="notes">
+						<p>En résumé pour le STI : c'est la stratégie la plus simple et la plus performante car aucun JOIN n'est nécessaire. Par contre, le schéma n'est pas normalisé, on a des NULL partout, et on ne peut pas mettre de contrainte NOT NULL sur les colonnes spécifiques aux enfants.</p>
+						<p>C'est idéal quand on a peu de propriétés spécifiques par sous-type.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h2>Class Table Inheritance</h2>
+					<h4>(CTI)</h4>
+					<aside class="notes">
+						<p>Deuxième stratégie : le Class Table Inheritance, aussi appelé JOINED. Chaque classe a sa propre table.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>CTI - Code PHP</h3>
+					<pre><code class="language-php" data-trim data-noescape data-line-numbers="|2">
+#[Entity]
+#[InheritanceType('JOINED')]
+#[DiscriminatorColumn(name: 'type', type: 'string')]
+#[DiscriminatorMap([
+    'admin'    => Admin::class,
+    'customer' => Customer::class,
+])]
+abstract class User
+{
+    #[Id, GeneratedValue]
+    #[Column]
+    private ?int $id = null;
+
+    #[Column(length: 255)]
+    private string $email;
+
+    #[Column(length: 255)]
+    private string $password;
+}
+					</code></pre>
+					<p class="fragment" style="font-size: 0.75em;">
+						Admin et Customer : <strong>identiques</strong> au STI
+					</p>
+					<aside class="notes">
+						<p>Le code PHP est quasi identique au STI. La seule différence : on passe de SINGLE_TABLE à JOINED.</p>
+						<p>Les classes enfant ne changent pas du tout. C'est la beauté de Doctrine : changer de stratégie ne demande quasiment aucun changement de code PHP.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>CTI - SQL généré</h3>
+					<pre><code class="language-sql" data-trim data-line-numbers="1-6|8-13|15-20">
+CREATE TABLE user (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    type VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE admin (
+    id INT PRIMARY KEY,
+    role VARCHAR(50) NOT NULL,      -- NOT NULL possible !
+    permissions JSON NOT NULL,
+    FOREIGN KEY (id) REFERENCES user(id)
+);
+
+CREATE TABLE customer (
+    id INT PRIMARY KEY,
+    address TEXT NOT NULL,           -- NOT NULL possible !
+    loyalty_points INT NOT NULL,
+    FOREIGN KEY (id) REFERENCES user(id)
+);
+					</code></pre>
+					<aside class="notes">
+						<p>Là c'est très différent côté SQL. On a 3 tables : user avec les colonnes communes, admin et customer avec chacune leurs colonnes spécifiques.</p>
+						<p>Les tables enfant ont une FK vers user. L'id est partagé : un admin avec id=1 correspond au user avec id=1.</p>
+						<p>Gros avantage : on peut mettre des NOT NULL sur les colonnes des enfants ! Le schéma est normalisé, propre.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>CTI - Données</h3>
+					<div style="display: flex; gap: 20px; justify-content: center;">
+						<div>
+							<h4 style="font-size: 0.6em;">user</h4>
+							<table style="font-size: 0.45em;">
+								<tr>
+									<th>id</th><th>type</th><th>email</th><th>password</th>
+								</tr>
+								<tr>
+									<td>1</td><td>admin</td><td>alice@acme.com</td><td>$2y$...</td>
+								</tr>
+								<tr>
+									<td>2</td><td>customer</td><td>bob@mail.com</td><td>$2y$...</td>
+								</tr>
+							</table>
+						</div>
+					</div>
+					<div style="display: flex; gap: 20px; justify-content: center; margin-top: 20px;">
+						<div class="fragment">
+							<h4 style="font-size: 0.6em;">admin</h4>
+							<table style="font-size: 0.45em;">
+								<tr>
+									<th>id</th><th>role</th><th>permissions</th>
+								</tr>
+								<tr>
+									<td>1</td><td>SUPER_ADMIN</td><td>["MANAGE_USERS"]</td>
+								</tr>
+							</table>
+						</div>
+						<div class="fragment">
+							<h4 style="font-size: 0.6em;">customer</h4>
+							<table style="font-size: 0.45em;">
+								<tr>
+									<th>id</th><th>address</th><th>loyalty_points</th>
+								</tr>
+								<tr>
+									<td>2</td><td>12 rue de Paris</td><td>150</td>
+								</tr>
+							</table>
+						</div>
+					</div>
+					<aside class="notes">
+						<p>Voilà à quoi ressemblent les données. La table user contient les colonnes communes et le discriminant. Chaque table enfant ne contient que ses colonnes spécifiques, avec le même id que dans la table parente. Pas de NULL, pas de colonnes inutiles.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>CTI - Requêtes</h3>
+					<pre><code class="language-php" data-trim>
+// Tous les utilisateurs
+$users = $em->getRepository(User::class)->findAll();
+					</code></pre>
+					<pre class="fragment"><code class="language-sql" data-trim>
+SELECT u.id, u.type, u.email, u.password,
+       a.role, a.permissions,
+       c.address, c.loyalty_points
+FROM user u
+LEFT JOIN admin a ON u.id = a.id
+LEFT JOIN customer c ON u.id = c.id;
+					</code></pre>
+					<pre class="fragment"><code class="language-php" data-trim>
+// Seulement les Admin
+$admins = $em->getRepository(Admin::class)->findAll();
+					</code></pre>
+					<pre class="fragment"><code class="language-sql" data-trim>
+SELECT u.id, u.email, u.password,
+       a.role, a.permissions
+FROM user u
+INNER JOIN admin a ON u.id = a.id;
+					</code></pre>
+					<aside class="notes">
+						<p>Quand on fait un findAll sur User, Doctrine génère des LEFT JOIN vers toutes les tables enfant. Il a besoin de toutes les données pour instancier le bon objet.</p>
+						<p>Quand on requête directement Admin, c'est un INNER JOIN : on ne prend que les lignes qui existent dans la table admin.</p>
+						<p>Plus on a de sous-classes, plus on a de JOINs. C'est là que ça peut devenir coûteux.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>CTI - Bilan</h3>
+					<div style="display: flex; justify-content: space-around;">
+						<div style="flex: 1; padding: 10px;">
+							<h4 style="color: var(--accent-green);">Avantages</h4>
+							<ul style="font-size: 0.65em;">
+								<li>Schéma normalisé</li>
+								<li>Pas de colonnes avec NULL</li>
+								<li>NOT NULL possible sur les enfants</li>
+								<li>Propre et lisible</li>
+							</ul>
+						</div>
+						<div style="flex: 1; padding: 10px;">
+							<h4 style="color: var(--accent-red);">Inconvénients</h4>
+							<ul style="font-size: 0.65em;">
+								<li>JOINs systématiques</li>
+								<li>Performances moindres sur gros volumes</li>
+								<li>INSERT = plusieurs tables</li>
+								<li>Plus complexe à débugger</li>
+							</ul>
+						</div>
+					</div>
+					<aside class="notes">
+						<p>Le CTI est l'inverse du STI : le schéma est propre et normalisé, on peut mettre des contraintes NOT NULL, mais chaque requête implique des JOINs.</p>
+						<p>Les INSERTs aussi sont plus coûteux car Doctrine doit écrire dans plusieurs tables.</p>
+						<p>C'est idéal quand on a beaucoup de propriétés spécifiques ou quand l'intégrité du schéma est primordiale.</p>
+					</aside>
+				</section>
+
+				<section data-auto-animate>
+					<h3>DQL - INSTANCE OF</h3>
+					<pre><code class="language-php" data-trim>
+// Tous les Admin parmi les Users
+$query = $em->createQuery(
+    'SELECT u FROM App\Entity\User u
+     WHERE u INSTANCE OF App\Entity\Admin'
+);
+					</code></pre>
+					<pre class="fragment"><code class="language-php" data-trim>
+// Tous les Users qui ne sont PAS des Admin
+$query = $em->createQuery(
+    'SELECT u FROM App\Entity\User u
+     WHERE u NOT INSTANCE OF App\Entity\Admin'
+);
+					</code></pre>
+					<pre class="fragment"><code class="language-php" data-trim>
+// Combiné avec d'autres conditions
+$query = $em->createQuery(
+    'SELECT u FROM App\Entity\User u
+     WHERE u INSTANCE OF App\Entity\Customer
+     AND u.loyaltyPoints > :minPoints'
+)->setParameter('minPoints', 100);
+					</code></pre>
+					<aside class="notes">
+						<p>Le DQL offre un opérateur très puissant : INSTANCE OF. C'est l'équivalent du instanceof PHP, mais côté requête.</p>
+						<p>Ça permet de filtrer par type directement dans le DQL, sans connaître le nom de la colonne discriminant ni sa valeur. Doctrine traduit ça en WHERE type = 'admin' automatiquement.</p>
+						<p>On peut aussi l'utiliser en négatif avec NOT INSTANCE OF : par exemple, donner tous les utilisateurs qui ne sont pas admin.</p>
+						<p>Et bien sûr, on peut le combiner avec n'importe quelle autre condition DQL. Ici on récupère les Customer avec plus de 100 points de fidélité.</p>
+					</aside>
+				</section>
+
+				<section data-auto-animate>
+					<h3>DQL - INSTANCE OF</h3>
+					<pre><code class="language-php" data-trim style="font-size: 0.85em;">
+// Dashboard en une seule requête
+$query = $em->createQuery(
+    'SELECT NEW App\DTO\UserStats(
+        COUNT(u),
+        SUM(CASE WHEN u INSTANCE OF App\Entity\Admin THEN 1 ELSE 0 END),
+        SUM(CASE WHEN u INSTANCE OF App\Entity\Customer THEN 1 ELSE 0 END),
+        AVG(c.loyaltyPoints)
+    )
+    FROM App\Entity\User u
+    LEFT JOIN App\Entity\Customer c WITH c.id = u.id'
+);
+// → UserStats { total: 150, admins: 12, customers: 138, avgLoyalty: 847.5 }
+					</code></pre>
+					<aside class="notes">
+						<p>Et le dernier exemple, c'est la cerise sur le gâteau : on combine INSTANCE OF avec CASE WHEN et le mot-clé NEW pour projeter directement dans un DTO. En une seule requête, on obtient un objet UserStats avec le nombre total, le nombre d'admins, de customers, et la moyenne des points de fidélité. Zéro hydratation d'entité, performance maximale, et le résultat est directement un objet typé prêt à utiliser.</p>
+						<p>C'est valable aussi bien en STI qu'en CTI.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>Relations</h3>
+					<div style="display: flex; gap: 24px; justify-content: center;">
+						<div style="flex: 0 1 auto;">
+							<h4>AuditLog → User</h4>
+							<pre><code class="language-php" data-trim data-noescape>
+#[Entity]
+class AuditLog
+{
+    #[ManyToOne(
+        targetEntity: User::class
+    )]
+    private User $user;
+
+    #[Column]
+    private string $action;
+}
+							</code></pre>
+						</div>
+						<div style="flex: 0 1 auto;">
+							<h4>Order → Customer</h4>
+							<pre><code class="language-php" data-trim data-noescape>
+#[Entity]
+class Order
+{
+    #[ManyToOne(
+        targetEntity: Customer::class
+    )]
+    private Customer $customer;
+
+    #[Column]
+    private float $total;
+}
+							</code></pre>
+						</div>
+					</div>
+					<div class="decision-box fragment">
+						<strong>Une relation vers la classe parente accepte toutes les sous-classes</strong>
+						<br>&#x2192; <code>AuditLog.user</code> peut être un Admin ou un Customer
+					</div>
+					<aside class="notes">
+						<p>Un des gros avantages de l'héritage Doctrine, c'est le "polymorphisme" (avec des gros guillemets, vs Eloquent) dans les relations. Ici, AuditLog a une ManyToOne vers User : on peut y stocker n'importe quel type d'utilisateur, Admin ou Customer. Tandis que Order pointe spécifiquement vers Customer — seuls les customers peuvent passer des commandes. Doctrine gère la résolution du bon type automatiquement à l'hydratation.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>Comparatif</h3>
+					<table class="comparison">
+						<thead>
+						<tr>
+							<th></th>
+							<th>Mapped Superclass</th>
+							<th>STI</th>
+							<th>CTI</th>
+						</tr>
+						</thead>
+						<tbody>
+						<tr>
+							<td><strong>Requête globale</strong></td>
+							<td style="color: var(--accent-red);">Non</td>
+							<td style="color: var(--accent-green);">Oui</td>
+							<td style="color: var(--accent-green);">Oui</td>
+						</tr>
+						<tr>
+							<td><strong>Relations vers parent</strong></td>
+							<td style="color: var(--accent-red);">Non</td>
+							<td style="color: var(--accent-green);">Oui</td>
+							<td style="color: var(--accent-green);">Oui</td>
+						</tr>
+						<tr>
+							<td><strong>Schéma normalisé</strong></td>
+							<td style="color: var(--accent-green);">Oui</td>
+							<td style="color: var(--accent-red);">Non</td>
+							<td style="color: var(--accent-green);">Oui</td>
+						</tr>
+						<tr>
+							<td><strong>NOT NULL enfants</strong></td>
+							<td style="color: var(--accent-green);">Oui</td>
+							<td style="color: var(--accent-red);">Non</td>
+							<td style="color: var(--accent-green);">Oui</td>
+						</tr>
+						<tr>
+							<td><strong>Performance lecture</strong></td>
+							<td>N/A</td>
+							<td style="color: var(--accent-green);">Excellente</td>
+							<td style="color: var(--accent-orange);">JOINs</td>
+						</tr>
+						<tr>
+							<td><strong>Performance écriture</strong></td>
+							<td>N/A</td>
+							<td style="color: var(--accent-green);">1 INSERT</td>
+							<td style="color: var(--accent-orange);">2 INSERT ou +</td>
+						</tr>
+						<tr>
+							<td><strong>Colonnes NULL</strong></td>
+							<td style="color: var(--accent-green);">Aucune</td>
+							<td style="color: var(--accent-red);">Beaucoup</td>
+							<td style="color: var(--accent-green);">Aucune</td>
+						</tr>
+						</tbody>
+					</table>
+					<aside class="notes">
+						<p>Voilà un récapitulatif. Aucune stratégie n'est parfaite, chacune a ses compromis.</p>
+						<p>Le MappedSuperclass est le plus simple mais pas de findAll global. Le STI est performant mais avec des NULL. Le CTI est propre mais avec des JOINs.</p>
+						<p>Le choix dépend de votre contexte. On va justement voir dans la partie 3 des retours d'expérience pour vous aider à choisir.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h1 style="margin-bottom: 0">3.</h1>
+					<h3 style="margin-bottom: 80px">Retour d'expérience</h3>
+					<aside class="notes">
+						<p>Quelques pièges qu'on rencontre en production.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>Single Table Inheritance</h3>
+					<p>
+						Table de plus en plus large
+					</p>
+					<p>
+						Colonnes NULL qui s'accumulent
+					</p>
+					<aside class="notes">
+						<p>C'est un cas qu'on rencontre tôt ou tard : on a choisi STI, ça marchait bien avec 2-3 sous-types, et puis on a de plus en plus de sous-types. Chaque nouveau sous-type ajoute des colonnes qui seront NULL pour tous les autres.</p>
+					</aside>
+				</section>
+
+				<section data-auto-animate>
+					<h3>Migrer de STI vers CTI</h3>
+					<pre class="fragment"><code class="language-sql" data-trim>
+-- 1. Créer les tables enfant
+CREATE TABLE admin (
+    id INT PRIMARY KEY REFERENCES user(id),
+    role VARCHAR(50) NOT NULL,
+    permissions JSON NOT NULL
+);
+
+CREATE TABLE customer (
+    id INT PRIMARY KEY REFERENCES user(id),
+    address TEXT,
+    loyalty_points INT NOT NULL DEFAULT 0
+);
+					</code></pre>
+					<pre class="fragment"><code class="language-sql" data-trim>
+-- 2. Migrer les données
+INSERT INTO admin (id, role, permissions)
+SELECT id, role, permissions FROM user WHERE type = 'admin';
+
+INSERT INTO customer (id, address, loyalty_points)
+SELECT id, address, loyalty_points FROM user WHERE type = 'customer';
+					</code></pre>
+					<aside class="notes">
+						<p>Et on veut passer en CTI.</p>
+						<p>La migration SQL n'est pas si compliquée : on crée les tables enfant avec une clé primaire qui référence la table parente, puis on migre les données avec des INSERT SELECT.</p>
+					</aside>
+				</section>
+
+				<section data-auto-animate>
+					<h3>Migrer de STI vers CTI</h3>
+					<pre><code class="language-sql" data-trim>
+-- 3. Nettoyer la table parente
+ALTER TABLE user
+    DROP COLUMN role,
+    DROP COLUMN permissions,
+    DROP COLUMN address,
+    DROP COLUMN loyalty_points;
+					</code></pre>
+					<pre class="fragment"><code class="language-php" data-trim>
+// 4. Mettre à jour les attributs Doctrine
+-#[InheritanceType('SINGLE_TABLE')]
++#[InheritanceType('JOINED')]
+					</code></pre>
+					<p class="fragment" style="font-size: 0.65em; color: var(--accent-red);">
+						<strong>⚠ Toujours tester sur un dump de production avant !</strong>
+					</p>
+					<aside class="notes">
+						<p>Ensuite, on nettoie la table parente en supprimant les colonnes qui ont été déplacées dans les tables enfant.</p>
+						<p>Côté PHP, c'est un simple changement d'attribut : SINGLE_TABLE devient JOINED. C'est tout.</p>
+						<p>Mais attention : faites toujours ça sur un dump de prod d'abord. Pas sur la prod directement. Et préparez un rollback. Si la migration plante à mi-chemin, vous voulez pouvoir revenir en arrière.</p>
+						<p>Pensez aussi à vérifier vos index : en STI vous aviez probablement un index sur la colonne type, en CTI les JOINs sur les clés primaires doivent être performants.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>CTI - JOINs coûteux</h3>
+					<p>
+						Avec beaucoup de sous-classes ou de données, les LEFT JOINs ne sont plus si anodins
+					</p>
+					<aside class="notes">
+						<p>En CTI, les JOINs systématiques peuvent poser problème sur de gros volumes. Surtout si on a 5-6 sous-classes, chaque findAll fait autant de LEFT JOINs.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>Le problème du "downcast"</h3>
+					<p class="fragment" style="font-size: 0.75em;">Un Admin (id: 1) devient un Customer ?</p>
+					<pre class="fragment"><code class="language-php" data-trim>
+// Ceci ne fonctionne PAS avec Doctrine
+$customer = $em->find(Customer::class, 1);
+// Ceci non plus
+$user = $em->find(User::class, 1);
+// Impossible de "transformer" un Admin en Customer via Doctrine
+					</code></pre>
+					<div class="fragment" style="font-size: 0.7em;">
+						<p><strong>Doctrine ne supporte pas nativement le changement de type</strong></p>
+						<p>Le discriminant est figé à la création de l'entité</p>
+					</div>
+					<aside class="notes">
+						<p>Un piège classique : on ne peut pas changer le type d'une entité. Si un Admin doit redevenir un simple User, Doctrine ne sait pas faire ça nativement.</p>
+						<p>Le discriminant est écrit une fois à l'INSERT et Doctrine ne fournit pas de mécanisme pour le modifier.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>Le problème du "downcast"</h3>
+					<div style="font-size: 0.7em; margin-top: 20px;">
+						<p><strong>Solutions possibles :</strong></p>
+						<ul>
+							<li>
+								Requête SQL native pour :
+								<ul>
+									<li>modifier le discriminant</li>
+									<li>supprimer l'ancienne ligne enfant</li>
+									<li>insérer la nouvelle ligne enfant</li>
+								</ul>
+							</li>
+							<li>Créer une nouvelle entité et supprimer l'ancienne</li>
+							<li>Repenser le modèle (composition plutôt qu'héritage)</li>
+						</ul>
+					</div>
+					<aside class="notes">
+						<p>On peut le faire en SQL natif : UPDATE le discriminant et DELETE la ligne dans la table enfant. Mais c'est fragile et dangereux.</p>
+						<p>Mieux vaut souvent repenser le modèle : est-ce que "Admin" est vraiment un type de User, ou plutôt un rôle qu'on peut attribuer et retirer ?</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>INSTANCE OF et QueryBuilder</h3>
+					<p style="font-size: 0.65em; color: var(--accent-red);">
+						<strong>⚠ Ne pas utiliser setParameter() avec INSTANCE OF</strong>
+					</p>
+					<pre class="fragment"><code class="language-php" data-trim>
+// NE PAS FAIRE : setParameter avec INSTANCE OF
+$qb->andWhere('u INSTANCE OF :type')
+   ->setParameter('type', Admin::class);
+// Pas d'erreur explicite, mais résultats incorrects !
+					</code></pre>
+					<pre class="fragment"><code class="language-php" data-trim>
+// Interpoler directement le FQCN dans le DQL
+$qb->andWhere(
+    sprintf('u INSTANCE OF %s', Admin::class)
+);
+					</code></pre>
+					<pre class="fragment"><code class="language-php" data-trim>
+// Ou passer le ClassMetadata via setParameter
+$qb->andWhere('u INSTANCE OF :type')
+   ->setParameter('type', $em->getClassMetadata(Admin::class));
+					</code></pre>
+					<aside class="notes">
+						<p>Un piège remonté par mon équipe pas plus tard que cette semaine : quand on utilise INSTANCE OF dans un QueryBuilder, il ne faut surtout pas passer le FQCN en string via setParameter(). Doctrine ne sait pas interpréter une simple string comme un type d'entité dans ce contexte.</p>
+						<p>Le pire, c'est qu'il n'y a pas d'erreur explicite : la requête s'exécute, mais ne retourne pas les bonnes données. C'est très difficile à repérer.</p>
+						<p>Deux solutions : soit on interpole le FQCN directement dans le DQL avec sprintf — c'est l'une des rares exceptions où on n'utilise pas setParameter. Soit on utilise setParameter mais en passant le ClassMetadata de l'entité, récupéré via l'EntityManager. C'est ce que Doctrine attend réellement : un objet metadata, pas une simple string.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>Bonnes pratiques</h3>
+					<ul style="font-size: 0.65em;">
+						<li class="fragment"><strong>Toujours définir le DiscriminatorMap explicitement</strong>
+							<br>Ne pas laisser Doctrine le deviner (fragile, noms de classes en BDD)
+						</li>
+						<li class="fragment"><strong>Utiliser un Enum pour le discriminant</strong>
+							<pre><code class="language-php" data-trim>
+enum UserType: string {
+    case Admin = 'admin';
+    case Customer = 'customer';
+}
+
+#[DiscriminatorMap([
+    UserType::Admin->value    => Admin::class,
+    UserType::Customer->value => Customer::class,
+])]
+							</code></pre>
+							Pas de magic strings
+						</li>
+						<li class="fragment"><strong>Garder la hiérarchie simple</strong> - 1 seul niveau d'héritage</li>
+						<li class="fragment"><strong>Indexer la colonne discriminant / id</strong> - Accélère les requêtes filtrées</li>
+						<li class="fragment"><strong>Tester les migrations avant de changer de stratégie</strong></li>
+					</ul>
+					<aside class="notes">
+						<p>Quelques bonnes pratiques tirées de l'expérience.</p>
+						<p>Toujours définir explicitement le DiscriminatorMap. Si vous ne le faites pas, Doctrine utilise le nom court de la classe en minuscules. C'est fragile : un rename de classe casse la BDD.</p>
+						<p>Astuce : utiliser un Enum PHP pour les valeurs du discriminant. Ça vous donne le typage fort, l'autocomplétion, et plus de magic strings. Votre classe parente peut exposer un getType qui retourne l'Enum.</p>
+						<p>Gardez la hiérarchie à un seul niveau. User -> Admin, pas User -> Staff -> Admin. Ça devient vite ingérable.</p>
+						<p>Pensez à indexer la colonne discriminant, surtout en STI où les requêtes filtrent dessus systématiquement, et les id pour les entités en CTI.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>Choisir sa stratégie</h3>
+					<div class="decision-box fragment">
+						<strong>Pas besoin de requête globale ?</strong>
+						<br>&#x2192; <strong>Mapped Superclass</strong> - Simple partage de mapping
+					</div>
+					<div class="decision-box fragment">
+						<strong>Peu de propriétés spécifiques par sous-type ?</strong>
+						<br>&#x2192; <strong>Single Table Inheritance</strong> - Performance maximale
+					</div>
+					<div class="decision-box fragment">
+						<strong>Beaucoup de propriétés / besoin de NOT NULL / schéma propre ?</strong>
+						<br>&#x2192; <strong>Class Table Inheritance</strong> - Normalisation
+					</div>
+					<div class="decision-box fragment" style="border-image: none; border-left: 4px solid var(--accent-orange);">
+						<strong>Hiérarchie complexe avec beaucoup de comportements différents ?</strong>
+						<br>&#x2192; <strong>Repenser le modèle</strong> - Peut-être que la composition est plus adaptée
+					</div>
+					<aside class="notes">
+						<p>Si vous n'avez pas besoin de requêtes globales, restez sur MappedSuperclass. C'est le plus simple.</p>
+						<p>Si vos sous-types ont peu de propriétés spécifiques, STI est idéal. Performant, simple.</p>
+						<p>Si vous avez beaucoup de propriétés spécifiques ou que l'intégrité du schéma est importante, CTI.</p>
+						<p>Et si votre hiérarchie devient trop complexe, c'est peut-être un signe qu'il faut repenser le modèle. L'héritage n'est pas toujours la réponse, parfois la composition est meilleure.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>Composition vs Héritage</h3>
+					<p style="font-size: 0.65em; color: var(--accent-purple); opacity: 0.7;">Un Admin qui redevient Customer ? Peut-être que le modèle est faux.</p>
+					<div style="display: flex; gap: 30px;">
+						<div style="flex: 1; border: 2px solid #e74c3c; border-radius: 8px; padding: 15px;">
+							<h4 style="color: var(--accent-red); font-size: 0.75em;">Héritage</h4>
+							<pre><code class="language-php" data-trim data-noescape style="font-size: 0.75em;">
+class User { ... }
+class Admin extends User {
+    private string $role;
+    private array $permissions;
+}
+class Customer extends User {
+    private int $loyaltyPoints;
+}
+							</code></pre>
+							<p style="font-size: 0.55em; color: var(--accent-red);">Le type est figé à vie</p>
+						</div>
+						<div class="fragment" style="flex: 1; border: 2px solid #27ae60; border-radius: 8px; padding: 15px;">
+							<h4 style="color: var(--accent-green); font-size: 0.75em;">Composition</h4>
+							<pre><code class="language-php" data-trim data-noescape style="font-size: 0.75em;">
+class User {
+    #[OneToOne]
+    private ?AdminProfile $admin;
+    #[OneToOne]
+    private ?CustomerProfile $customer;
+}
+							</code></pre>
+							<p style="font-size: 0.55em; color: var(--accent-green);">Un User peut évoluer librement</p>
+						</div>
+					</div>
+					<aside class="notes">
+						<p>On l'a dit dans les bonnes pratiques : parfois la composition est meilleure. Voici un exemple concret.</p>
+						<p>À gauche, l'héritage : un Admin est un User, pour toujours. Impossible de changer de type, on l'a vu.</p>
+						<p>À droite, la composition : un User a un profil Admin ET/OU un profil Customer. On peut ajouter ou retirer un profil sans toucher au User. C'est plus flexible.</p>
+						<p>La composition est meilleure quand le "type" peut changer dans le temps, ou quand un utilisateur peut avoir plusieurs casquettes à la fois.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>Cas d'usage concrets (1/2)</h3>
+					<ol style="font-size: 0.65em;">
+						<li class="fragment"><strong>User → Admin / Customer</strong><br><span style="color: var(--accent-purple); opacity: 0.7;">STI / CTI — selon le nombre de champs spécifiques</span></li>
+						<li class="fragment"><strong>Content → Article / Page / BlogPost</strong><br><span style="color: var(--accent-purple); opacity: 0.7;">STI — même structure (titre, slug, body), affichage différent</span></li>
+						<li class="fragment"><strong>Payment → CardPayment / BankTransfer / Crypto</strong><br><span style="color: var(--accent-purple); opacity: 0.7;">CTI — chaque moyen de paiement a ses propres champs</span></li>
+						<li class="fragment"><strong>Media → Image / Video / Document</strong><br><span style="color: var(--accent-purple); opacity: 0.7;">CTI — métadonnées très différentes</span></li>
+						<li class="fragment"><strong>Product → PhysicalProduct / DigitalProduct</strong><br><span style="color: var(--accent-purple); opacity: 0.7;">CTI — poids/dimensions vs lien de téléchargement</span></li>
+					</ol>
+					<aside class="notes">
+						<p>Voici 10 exemples concrets pour vous inspirer, répartis sur 2 slides.</p>
+						<p>User/Admin/Customer, on l'a vu tout au long du talk. Les contenus type CMS, c'est un cas classique de STI : Article, Page, BlogPost partagent titre, slug, body et auteur. Seul le rendu et le routing diffèrent.</p>
+						<p>Les paiements, c'est du CTI car un virement a un IBAN, une carte a un numéro, etc. Beaucoup de champs spécifiques.</p>
+						<p>Les médias aussi : une image a des dimensions, une vidéo a une durée et un codec, un document a un nombre de pages. CTI est naturel ici.</p>
+						<p>Les produits physiques vs digitaux, c'est un grand classique e-commerce. Le physique a un poids et des dimensions pour le shipping, le digital a un lien de téléchargement. CTI.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>Cas d'usage concrets (2/2)</h3>
+					<ol start="6" style="font-size: 0.65em;">
+						<li class="fragment"><strong>Event → Conference / Workshop / Meetup</strong><br><span style="color: var(--accent-purple); opacity: 0.7;">STI — propriétés communes majoritaires</span></li>
+						<li class="fragment"><strong>BaseDocument → Invoice / Quote / CreditNote</strong><br><span style="color: var(--accent-purple); opacity: 0.7;">MappedSuperclass — champs communs (n°, date, client), tables séparées</span></li>
+						<li class="fragment"><strong>Discount → PercentDiscount / FixedDiscount / FreeShipping</strong><br><span style="color: var(--accent-purple); opacity: 0.7;">STI / CTI — logique de calcul différente, peu de champs</span></li>
+						<li class="fragment"><strong>Vehicle → Car / Truck / Motorcycle</strong><br><span style="color: var(--accent-purple); opacity: 0.7;">CTI — caractéristiques techniques distinctes</span></li>
+						<li class="fragment"><strong>AuditLog → LoginLog / PaymentLog / ErrorLog</strong><br><span style="color: var(--accent-purple); opacity: 0.7;">STI — table unique pour requêter tout l'historique</span></li>
+					</ol>
+					<aside class="notes">
+						<p>Les événements : conférence, workshop, meetup — ils partagent date, lieu, organisateur. STI suffit souvent.</p>
+						<p>Les documents commerciaux : facture, devis, avoir — ils partagent un numéro, une date, un client et un montant. Mais on ne requête jamais "tous les documents" ensemble. Chaque type vit dans sa propre table → MappedSuperclass idéal.</p>
+						<p>Les réductions : pourcentage, montant fixe, livraison gratuite. Peu de champs spécifiques, mais la logique de calcul est dans chaque sous-classe. STI / CTI ça se discute.</p>
+						<p>Les véhicules : une voiture a un nombre de portes, un camion a une charge utile, une moto a une cylindrée. Beaucoup de propriétés distinctes → CTI.</p>
+						<p>Et enfin les logs d'audit. STI car on veut absolument pouvoir requêter tout l'historique d'un coup, et les champs spécifiques sont minimes.</p>
+					</aside>
+				</section>
+
+				<section>
+					<h3>Pour aller plus loin</h3>
+					<p style="font-size: 0.75em;">Hasard du calendrier, <strong>Kevin Bond</strong> est en train d'ajouter une série de cours sur l'héritage Doctrine sur <strong>SymfonyCasts</strong> :</p>
+					<p style="margin-top: 30px;">
+						<a href="https://symfonycasts.com/screencast/doctrine-inheritance" target="_blank" style="font-size: 0.7em;">
+							symfonycasts.com/screencast/doctrine-inheritance
+						</a>
+					</p>
+					<aside class="notes">
+						<p>Et petit bonus : hasard du calendrier, Kevin Bond est justement en train de publier une série complète de cours sur l'héritage Doctrine sur SymfonyCasts. Si vous voulez approfondir le sujet avec des exercices pratiques, c'est le moment d'aller y jeter un œil !</p>
+					</aside>
+				</section>
+
+				<section data-auto-animate>
+					<h3>Côté coulisses</h3>
+					<p style="font-size: 0.8em;">Cette présentation est née de problématiques rencontrées chez <strong><a href="https://vasco.fund" target="_blank">Vasco</a></strong>,
+					où l'on utilise Doctrine au quotidien sur des sujets fintech.</p>
+					<p style="font-size: 0.8em; margin-top: 20px;">On agrandit l'équipe, venez voir nos offres :</p>
+					<p>
+						<a href="https://parallel-invest.notion.site/Rejoindre-Vasco-998bac56461c4224a443fb918e136b6d" target="_blank" style="font-size: 0.8em;">
+							Jobs at Vasco
+						</a>
+					</p>
+					<img src="./images/qr_job.svg" height="200" style="margin: 0 !important;" class="invert-on-dark"/>
+				</section>
+				<section data-auto-animate>
+					<h1 style="margin-bottom: 0">Merci</h1>
+
+					<div style="display: flex; justify-content: center; gap: 80px; margin-top: 20px;">
+						<div style="text-align: center;">
+							<img src="./images/qr.svg" height="180" style="margin: 0 !important;" class="invert-on-dark"/>
+						</div>
+						<div style="text-align: center;">
+							<img src="./images/qr_job.svg" height="200" style="margin: 0 !important;" class="invert-on-dark"/>
+						</div>
+					</div>
+				</section>
+			</div>
+		</div>
+
+		<script src="dist/reveal.js"></script>
+		<script src="plugin/zoom/zoom.js"></script>
+		<script src="plugin/notes/notes.js"></script>
+		<script src="plugin/search/search.js"></script>
+		<script src="plugin/markdown/markdown.js"></script>
+		<script src="plugin/highlight/highlight.js"></script>
+		<script>
+
+			// Also available as an ES module, see:
+			// https://revealjs.com/initialization/
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				center: true,
+				hash: true,
+				slideNumber: 'c/t',
+				transition: 'fade',
+				transitionSpeed: 'default',
+				backgroundTransition: 'fade',
+
+				// Learn about plugins: https://revealjs.com/plugins/
+				plugins: [ RevealZoom, RevealNotes, RevealSearch, RevealMarkdown, RevealHighlight ]
+			});
+
+		</script>
+
+	</body>
+</html>

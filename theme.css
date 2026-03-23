@@ -1,0 +1,192 @@
+:root {
+	--r-heading-margin: 0 0 40px 0;
+	--r-block-margin: 40px;
+	--r-background-color: #0f0f1a;
+	--r-main-font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+	--r-heading-font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+	--r-code-font: 'JetBrains Mono', monospace;
+	--r-main-font-size: 38px;
+	--r-main-color: #e0e0ef;
+	--r-heading-color: #ffffff;
+	--r-link-color: #60a5fa;
+	--r-link-color-hover: #93c5fd;
+	--r-heading-text-transform: none;
+	--r-heading-font-weight: 600;
+	--accent-gradient: linear-gradient(135deg, #7db4ff 0%, #d4a0ff 100%);
+	--accent-blue: #60a5fa;
+	--accent-purple: #a78bfa;
+	--accent-green: #34d399;
+	--accent-red: #f87171;
+	--accent-orange: #fbbf24;
+	--glass-bg: rgba(255, 255, 255, 0.05);
+	--glass-border: rgba(255, 255, 255, 0.1);
+}
+
+.reveal {
+	background: radial-gradient(ellipse at 20% 50%, rgba(102, 126, 234, 0.08) 0%, transparent 50%),
+				radial-gradient(ellipse at 80% 50%, rgba(118, 75, 162, 0.08) 0%, transparent 50%),
+				var(--r-background-color);
+}
+
+.reveal h1, .reveal h2, .reveal h3 {
+	background: var(--accent-gradient);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+	letter-spacing: -0.02em;
+}
+
+.reveal h4 {
+	color: var(--accent-purple);
+	font-weight: 500;
+	text-transform: none;
+}
+
+li {
+	margin-bottom: 15px;
+}
+
+.reveal pre {
+	margin: 0;
+	width: 100%;
+	border-radius: 12px;
+	border: 1px solid var(--glass-border);
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.reveal pre code {
+	border-radius: 12px;
+	padding: 1em !important;
+}
+
+.reveal table {
+	border-collapse: separate;
+	border-spacing: 0;
+}
+
+.reveal table th,
+.reveal table td {
+	border-color: var(--glass-border) !important;
+}
+
+.reveal table th {
+	background: rgba(102, 126, 234, 0.15);
+	color: var(--accent-blue);
+	font-weight: 600;
+}
+
+.reveal table.comparison th,
+.reveal table.comparison td {
+	font-size: 0.55em;
+	text-align: center;
+	border: 1px solid var(--glass-border) !important;
+	padding: 10px 12px;
+}
+
+.reveal table.comparison th {
+	background: rgba(102, 126, 234, 0.15);
+	color: var(--accent-blue);
+}
+
+.null-cell {
+	color: var(--accent-red);
+	font-weight: bold;
+}
+
+.reveal .decision-box {
+	background: var(--glass-bg);
+	border-left: 4px solid;
+	border-image: var(--accent-gradient) 1;
+	padding: 18px 24px;
+	margin: 12px 0;
+	text-align: left;
+	font-size: 0.7em;
+	border-radius: 0 12px 12px 0;
+	backdrop-filter: blur(10px);
+}
+
+.shrink-on-fragment pre {
+	transition: all 0.5s ease;
+}
+.shrink-on-fragment:has(.fragment.visible) pre {
+	transform: scale(0.72);
+	transform-origin: top center;
+	margin-bottom: -4em;
+}
+
+/* Modern strong/emphasis colors */
+.reveal strong {
+	color: #ffffff;
+	font-weight: 600;
+}
+
+/* Slide number styling */
+.reveal .slide-number {
+	background: transparent;
+	color: rgba(255, 255, 255, 0.3);
+	font-family: 'Inter', sans-serif;
+	font-size: 14px;
+}
+
+/* Progress bar */
+.reveal .progress {
+	height: 3px;
+	background: rgba(255, 255, 255, 0.05);
+}
+.reveal .progress span {
+	background: var(--accent-gradient);
+}
+
+/* Controls */
+.reveal .controls button {
+	color: var(--accent-blue);
+}
+
+/* Fragment animations */
+.reveal .fragment {
+	transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Lists */
+.reveal ul, .reveal ol {
+	margin-left: 0;
+}
+
+/* Images */
+.reveal section img {
+	border: none;
+	box-shadow: none;
+	background: none;
+}
+
+/* Inline colored accents (replacing old hardcoded colors) */
+.reveal .text-blue { color: var(--accent-blue); }
+.reveal .text-red { color: var(--accent-red); }
+.reveal .text-green { color: var(--accent-green); }
+.reveal .text-orange { color: var(--accent-orange); }
+.reveal .text-purple { color: var(--accent-purple); }
+.reveal .text-muted { color: rgba(255, 255, 255, 0.5); }
+
+/* Section divider slides */
+.reveal section h1 {
+	font-size: 3em;
+	font-weight: 700;
+}
+
+/* Small text */
+.reveal small {
+	color: rgba(255, 255, 255, 0.6);
+}
+.reveal small a {
+	color: var(--accent-blue);
+}
+
+/* Strikethrough text */
+.reveal strike {
+	color: rgba(255, 255, 255, 0.35);
+}
+
+/* Invert dark logos for dark background */
+.reveal .invert-on-dark {
+	filter: invert(1) brightness(2);
+}
